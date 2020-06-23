@@ -1,31 +1,55 @@
 import React,{useState, useEffect} from 'react'
-
 import axios from 'axios'
+import { Alert } from 'bootstrap';
 
 const baseURL = "http://localhost:61952/getData";
 const saveDataSheetURL = "http://localhost:61952/upload";
 
-async function saveUrl(id, url){
-  var bodyFormData = new FormData();
-  bodyFormData.set("sheetURL", url);
-  const result = await axios({
-    method:"POST",
-    url: `${saveDataSheetURL}/${id}`,
-    data:bodyFormData
-  }); 
-  console.log(result); 
+
+async function openUrl(url){
+  var win = window.open(url, '_blank');
+  win.focus();
 }
 
-function renderList(dataSheets){
+
+function App() {
+  let [dataSheets, setdataSheets] = useState([]);
+  async function getdataSheets(){
+    const result = await axios.get(baseURL); 
+    setdataSheets(result.data);
+  }
+  useEffect(()=>{ getdataSheets(); },[]);
+
+  async function saveUrl(id, url){
+    var bodyFormData = new FormData();
+    bodyFormData.set("sheetURL", url);
+    await axios({
+      method:"POST",
+      url: `${saveDataSheetURL}/${id}`,
+      data:bodyFormData}).then(res=>{
+        alert( res.data);
+        //Cause overhead rendering of all list instead of one item
+        //TODO -- to be optimized 
+       getdataSheets();
+      }).catch(err=>{
+        alert( "File not Exist");
+        //Cause overhead rendering of all list instead of one item
+        //TODO -- to be optimized 
+       getdataSheets();
+      })
+
+  }
+
+  function renderList(){
     if(dataSheets)
     return dataSheets.map((dataSheet) => {
         return (         
           <tr className="" key={dataSheet.dataSheetId}>
-            <td>{dataSheet.productId}</td>
-            <td>{dataSheet.supplierId}</td>
-            <td>{dataSheet.dataSheetUrl}</td>
-            <td>{dataSheet.updatedAt}</td>
-            <td>{dataSheet.isValid? "Valid":""}</td>
+            <td>{dataSheet.productName}</td>
+            <td>{dataSheet.supplierName}</td>
+            <td  onClick={()=>openUrl(dataSheet.dataSheetUrl)}> {dataSheet.dataSheetUrl}</td>
+            <td> {dataSheet.updatedAt}</td>
+            <td>{dataSheet.isValid===1? "Valid": dataSheet.isValid===2 ?"InValid" : ""} </td>
             <td><button onClick={()=>saveUrl(dataSheet.dataSheetId, dataSheet.dataSheetUrl)} >Save</button></td>
           </tr>
         );
@@ -33,16 +57,6 @@ function renderList(dataSheets){
     return <div>No dataSheets Found</div>;
 }
 
-
-function App() {
-  let [dataSheets, setdataSheets] = useState([]);
-  useEffect(()=>{
-    async function getdataSheets(){
-      const result = await axios.get(baseURL);  
-      setdataSheets(result.data);
-    }
-    getdataSheets();
-  },[]);
 
   
   return (
@@ -59,7 +73,7 @@ function App() {
     </tr>
   </thead>
   <tbody>
-    {renderList(dataSheets)}
+    {renderList(dataSheets, setdataSheets)}
   </tbody>
 </table>
     </div>
